@@ -35,7 +35,7 @@ import type { ChatAttachment, ChatQueueItem, CronFormState } from "./ui-types.ts
 import type { NostrProfileFormState } from "./views/channels.nostr-profile-form.ts";
 import type { SessionLogEntry } from "./views/usage.ts";
 import type { WorkspaceSettingsDraft } from "./views/workspace-settings.ts";
-import type { Workspace, WorkspaceConfig, WorkspaceToolMapping } from "./workspace.ts";
+import type { Workspace, WorkspaceConfig } from "./workspace.ts";
 
 export type AppViewState = {
   settings: UiSettings;
