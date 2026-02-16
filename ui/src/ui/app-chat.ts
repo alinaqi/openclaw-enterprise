@@ -22,6 +22,7 @@ export type ChatHost = {
   hello: GatewayHelloOk | null;
   chatAvatarUrl: string | null;
   refreshSessionsAfterChat: Set<string>;
+  activeWorkspace: { id: string; name: string } | null;
 };
 
 export const CHAT_SESSIONS_ACTIVE_MINUTES = 120;
@@ -165,20 +166,27 @@ export async function handleSendChat(
     return;
   }
   const previousDraft = host.chatMessage;
-  const message = (messageOverride ?? host.chatMessage).trim();
+  const rawMessage = (messageOverride ?? host.chatMessage).trim();
   const attachments = host.chatAttachments ?? [];
   const attachmentsToSend = messageOverride == null ? attachments : [];
   const hasAttachments = attachmentsToSend.length > 0;
 
   // Allow sending with just attachments (no message text required)
-  if (!message && !hasAttachments) {
+  if (!rawMessage && !hasAttachments) {
     return;
   }
 
-  if (isChatStopCommand(message)) {
+  if (isChatStopCommand(rawMessage)) {
     await handleAbortChat(host);
     return;
   }
+
+  // Inject workspace context when a workspace is active (not for commands)
+  const isCommand = rawMessage.startsWith("/");
+  const message =
+    host.activeWorkspace && rawMessage && !isCommand
+      ? `[workspace:${host.activeWorkspace.id}] ${rawMessage}`
+      : rawMessage;
 
   const refreshSessions = isChatResetCommand(message);
   if (messageOverride == null) {

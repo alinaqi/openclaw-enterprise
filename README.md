@@ -1,14 +1,14 @@
-# 🦞 OpenClaw — Personal AI Assistant
+# 🦞 OpenClaw Enterprise — Multi-Org AI Chief of Staff
 
 <p align="center">
     <picture>
         <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/openclaw/openclaw/main/docs/assets/openclaw-logo-text-dark.png">
-        <img src="https://raw.githubusercontent.com/openclaw/openclaw/main/docs/assets/openclaw-logo-text.png" alt="OpenClaw" width="500">
+        <img src="https://raw.githubusercontent.com/openclaw/openclaw/main/docs/assets/openclaw-logo-text.png" alt="OpenClaw Enterprise" width="500">
     </picture>
 </p>
 
 <p align="center">
-  <strong>EXFOLIATE! EXFOLIATE!</strong>
+  <strong>Enterprise-ready AI assistant for multi-org management</strong>
 </p>
 
 <p align="center">
@@ -18,7 +18,21 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge" alt="MIT License"></a>
 </p>
 
-**OpenClaw** is a _personal AI assistant_ you run on your own devices.
+**OpenClaw Enterprise** is a fork of [OpenClaw](https://github.com/openclaw/openclaw) being made enterprise-ready for multi-organization management. Built on top of OpenClaw's personal AI assistant platform, this fork adds workspace isolation, per-org tool configuration, and a Stripe-style workspace switcher — turning a single-user assistant into a multi-org AI chief of staff ("Leo").
+
+Leo aggregates work context across multiple organizations into a single conversational interface. He reads emails, checks calendars, summarizes engineering activity, tracks projects, and acts on your behalf — all scoped to the right workspace.
+
+### Enterprise features (this fork)
+
+- **Workspace switcher** — Stripe-style org selector in the topbar with per-workspace chat session isolation
+- **Dynamic PM tool config** — Choose your project management tool per workspace (GitHub Issues, Asana, Monday.com, Jira, Linear) with per-tool credential management
+- **Workspace-scoped sessions** — Chat history stays separate per organization, no cross-org message bleed
+- **Multi-account tool support** — Gmail, Calendar, Slack, GitHub all support per-org account switching
+- **WebSocket reconnect resilience** — Auto-recovery of chat state on connection drops
+
+### Base platform
+
+OpenClaw is a _personal AI assistant_ you run on your own devices.
 It answers you on the channels you already use (WhatsApp, Telegram, Slack, Discord, Google Chat, Signal, iMessage, Microsoft Teams, WebChat), plus extension channels like BlueBubbles, Matrix, Zalo, and Zalo Personal. It can speak and listen on macOS/iOS/Android, and can render a live Canvas you control. The Gateway is just the control plane — the product is the assistant.
 
 If you want a personal, single-user assistant that feels local, fast, and always-on, this is it.

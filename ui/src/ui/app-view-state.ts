@@ -34,9 +34,17 @@ import type {
 import type { ChatAttachment, ChatQueueItem, CronFormState } from "./ui-types.ts";
 import type { NostrProfileFormState } from "./views/channels.nostr-profile-form.ts";
 import type { SessionLogEntry } from "./views/usage.ts";
+import type { WorkspaceSettingsDraft } from "./views/workspace-settings.ts";
+import type { Workspace, WorkspaceConfig, WorkspaceToolMapping } from "./workspace.ts";
 
 export type AppViewState = {
   settings: UiSettings;
+  workspaceConfig: WorkspaceConfig;
+  activeWorkspace: Workspace | null;
+  workspaceSwitcherOpen: boolean;
+  workspaceSettingsOpen: boolean;
+  workspaceSettingsTarget: Workspace | null;
+  workspaceSettingsDraft: WorkspaceSettingsDraft | null;
   password: string;
   tab: Tab;
   onboarding: boolean;
@@ -282,4 +290,10 @@ export type AppViewState = {
   handleOpenSidebar: (content: string) => void;
   handleCloseSidebar: () => void;
   handleSplitRatioChange: (ratio: number) => void;
+  handleWorkspaceSelect: (workspaceId: string | null) => void;
+  handleWorkspaceSwitcherToggle: () => void;
+  handleWorkspaceSettingsOpen: (workspaceId: string) => void;
+  handleWorkspaceSettingsClose: () => void;
+  handleWorkspaceSettingsDraftChange: (field: string, value: string) => void;
+  handleWorkspaceToolsSave: () => void;
 };

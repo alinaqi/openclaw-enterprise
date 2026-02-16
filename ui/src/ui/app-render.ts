@@ -66,6 +66,8 @@ import { renderNodes } from "./views/nodes.ts";
 import { renderOverview } from "./views/overview.ts";
 import { renderSessions } from "./views/sessions.ts";
 import { renderSkills } from "./views/skills.ts";
+import { renderWorkspaceSettings } from "./views/workspace-settings.ts";
+import { renderWorkspaceSwitcher } from "./views/workspace-switcher.ts";
 
 const AVATAR_DATA_RE = /^data:/i;
 const AVATAR_HTTP_RE = /^https?:\/\//i;
@@ -126,10 +128,20 @@ export function renderApp(state: AppViewState) {
               <img src=${basePath ? `${basePath}/favicon.svg` : "/favicon.svg"} alt="OpenClaw" />
             </div>
             <div class="brand-text">
-              <div class="brand-title">OPENCLAW</div>
-              <div class="brand-sub">Gateway Dashboard</div>
+              <div class="brand-title">OPENCLAW ENTERPRISE</div>
             </div>
           </div>
+          ${renderWorkspaceSwitcher({
+            config: state.workspaceConfig,
+            isOpen: state.workspaceSwitcherOpen,
+            onToggle: () => state.handleWorkspaceSwitcherToggle(),
+            onSelect: (id) => state.handleWorkspaceSelect(id),
+            onAddWorkspace: () => {
+              // TODO: open workspace management modal
+              state.handleWorkspaceSwitcherToggle();
+            },
+            onSettingsOpen: (id) => state.handleWorkspaceSettingsOpen(id),
+          })}
         </div>
         <div class="topbar-status">
           <div class="pill">
@@ -945,6 +957,14 @@ export function renderApp(state: AppViewState) {
       </main>
       ${renderExecApprovalPrompt(state)}
       ${renderGatewayUrlConfirmation(state)}
+      ${renderWorkspaceSettings({
+        workspace: state.workspaceSettingsTarget,
+        draft: state.workspaceSettingsDraft,
+        isOpen: state.workspaceSettingsOpen,
+        onClose: () => state.handleWorkspaceSettingsClose(),
+        onDraftChange: (field, value) => state.handleWorkspaceSettingsDraftChange(field, value),
+        onSave: () => state.handleWorkspaceToolsSave(),
+      })}
     </div>
   `;
 }

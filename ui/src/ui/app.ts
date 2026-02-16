@@ -70,6 +70,7 @@ import {
   setTab as setTabInternal,
   setTheme as setThemeInternal,
   onPopState as onPopStateInternal,
+  syncUrlWithSessionKey,
 } from "./app-settings.ts";
 import {
   resetToolStream as resetToolStreamInternal,
@@ -78,8 +79,22 @@ import {
 } from "./app-tool-stream.ts";
 import { resolveInjectedAssistantIdentity } from "./assistant-identity.ts";
 import { loadAssistantIdentity as loadAssistantIdentityInternal } from "./controllers/assistant-identity.ts";
+import { loadChatHistory } from "./controllers/chat.ts";
 import { loadSettings, type UiSettings } from "./storage.ts";
 import { type ChatAttachment, type ChatQueueItem, type CronFormState } from "./ui-types.ts";
+import {
+  createDraftFromWorkspace,
+  type WorkspaceSettingsDraft,
+} from "./views/workspace-settings.ts";
+import {
+  loadWorkspaceConfig,
+  saveWorkspaceConfig,
+  getActiveWorkspace,
+  updateWorkspace,
+  type WorkspaceConfig,
+  type Workspace,
+  type WorkspaceToolMapping,
+} from "./workspace.ts";
 
 declare global {
   interface Window {
@@ -142,6 +157,14 @@ export class OpenClawApp extends LitElement {
   @state() sidebarContent: string | null = null;
   @state() sidebarError: string | null = null;
   @state() splitRatio = this.settings.splitRatio;
+
+  // Workspace state
+  @state() workspaceConfig: WorkspaceConfig = loadWorkspaceConfig();
+  @state() activeWorkspace: Workspace | null = getActiveWorkspace(this.workspaceConfig);
+  @state() workspaceSwitcherOpen = false;
+  @state() workspaceSettingsOpen = false;
+  @state() workspaceSettingsTarget: Workspace | null = null;
+  @state() workspaceSettingsDraft: WorkspaceSettingsDraft | null = null;
 
   @state() nodesLoading = false;
   @state() nodes: Array<Record<string, unknown>> = [];
@@ -343,6 +366,21 @@ export class OpenClawApp extends LitElement {
   private themeMedia: MediaQueryList | null = null;
   private themeMediaHandler: ((event: MediaQueryListEvent) => void) | null = null;
   private topbarObserver: ResizeObserver | null = null;
+  private workspaceClickOutsideHandler = (event: MouseEvent) => {
+    if (!this.workspaceSwitcherOpen) {
+      return;
+    }
+    const target = event.target as HTMLElement;
+    if (target.closest(".workspace-switcher")) {
+      return;
+    }
+    this.workspaceSwitcherOpen = false;
+  };
+  private workspaceEscapeHandler = (event: KeyboardEvent) => {
+    if (event.key === "Escape" && this.workspaceSwitcherOpen) {
+      this.workspaceSwitcherOpen = false;
+    }
+  };
 
   createRenderRoot() {
     return this;
@@ -351,6 +389,8 @@ export class OpenClawApp extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     handleConnected(this as unknown as Parameters<typeof handleConnected>[0]);
+    document.addEventListener("click", this.workspaceClickOutsideHandler);
+    document.addEventListener("keydown", this.workspaceEscapeHandler);
   }
 
   protected firstUpdated() {
@@ -359,6 +399,8 @@ export class OpenClawApp extends LitElement {
 
   disconnectedCallback() {
     handleDisconnected(this as unknown as Parameters<typeof handleDisconnected>[0]);
+    document.removeEventListener("click", this.workspaceClickOutsideHandler);
+    document.removeEventListener("keydown", this.workspaceEscapeHandler);
     super.disconnectedCallback();
   }
 
@@ -563,6 +605,101 @@ export class OpenClawApp extends LitElement {
     const newRatio = Math.max(0.4, Math.min(0.7, ratio));
     this.splitRatio = newRatio;
     this.applySettings({ ...this.settings, splitRatio: newRatio });
+  }
+
+  handleWorkspaceSelect(workspaceId: string | null) {
+    this.workspaceConfig = { ...this.workspaceConfig, activeId: workspaceId };
+    this.activeWorkspace = getActiveWorkspace(this.workspaceConfig);
+    this.workspaceSwitcherOpen = false;
+    saveWorkspaceConfig(this.workspaceConfig);
+
+    // Switch to a workspace-scoped session so chat histories stay separate
+    const nextSession = workspaceId ?? "main";
+    this.sessionKey = nextSession;
+    this.chatMessage = "";
+    this.chatStream = null;
+    this.chatStreamStartedAt = null;
+    this.chatRunId = null;
+    this.chatSending = false;
+    this.resetToolStream();
+    this.resetChatScroll();
+    this.applySettings({
+      ...this.settings,
+      activeWorkspaceId: workspaceId,
+      sessionKey: nextSession,
+      lastActiveSessionKey: nextSession,
+    });
+    void this.loadAssistantIdentity();
+    syncUrlWithSessionKey(this, nextSession, true);
+    void loadChatHistory(this as unknown as Parameters<typeof loadChatHistory>[0]);
+  }
+
+  handleWorkspaceSwitcherToggle() {
+    this.workspaceSwitcherOpen = !this.workspaceSwitcherOpen;
+  }
+
+  handleWorkspaceSettingsOpen(workspaceId: string) {
+    const ws = this.workspaceConfig.workspaces.find((w) => w.id === workspaceId) ?? null;
+    this.workspaceSettingsTarget = ws;
+    this.workspaceSettingsDraft = ws ? createDraftFromWorkspace(ws) : null;
+    this.workspaceSettingsOpen = true;
+    this.workspaceSwitcherOpen = false;
+  }
+
+  handleWorkspaceSettingsClose() {
+    this.workspaceSettingsOpen = false;
+    this.workspaceSettingsTarget = null;
+    this.workspaceSettingsDraft = null;
+  }
+
+  handleWorkspaceSettingsDraftChange(field: string, value: string) {
+    if (!this.workspaceSettingsDraft) {
+      return;
+    }
+    this.workspaceSettingsDraft = { ...this.workspaceSettingsDraft, [field]: value };
+  }
+
+  handleWorkspaceToolsSave() {
+    const ws = this.workspaceSettingsTarget;
+    const d = this.workspaceSettingsDraft;
+    if (!ws || !d) {
+      return;
+    }
+
+    const tools: WorkspaceToolMapping = {};
+
+    // Preserve existing gmail/slack
+    if (ws.tools.gmail) {
+      tools.gmail = ws.tools.gmail;
+    }
+    if (ws.tools.slack) {
+      tools.slack = ws.tools.slack;
+    }
+
+    // Build GitHub config
+    if (d.githubOrg || d.githubRepo) {
+      tools.github = {
+        ...(d.githubOrg ? { org: d.githubOrg } : {}),
+        ...(d.githubRepo ? { repo: d.githubRepo } : {}),
+      };
+    }
+
+    // Build PM tool config
+    if (d.pmTool && d.pmTool !== "none") {
+      tools.pm = {
+        tool: d.pmTool,
+        ...(d.pmApiKey ? { apiKey: d.pmApiKey } : {}),
+        ...(d.pmWorkspace ? { workspace: d.pmWorkspace } : {}),
+      };
+    }
+    // Clear legacy fields — pm replaces them
+    delete tools.asana;
+    delete tools.monday;
+
+    this.workspaceConfig = updateWorkspace(this.workspaceConfig, ws.id, { tools });
+    this.activeWorkspace = getActiveWorkspace(this.workspaceConfig);
+    saveWorkspaceConfig(this.workspaceConfig);
+    this.handleWorkspaceSettingsClose();
   }
 
   render() {

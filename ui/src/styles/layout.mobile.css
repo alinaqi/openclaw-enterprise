@@ -74,6 +74,20 @@
     display: none;
   }
 
+  /* Workspace switcher mobile */
+  .workspace-trigger {
+    padding: 3px 8px;
+    font-size: 12px;
+  }
+
+  .workspace-trigger__label {
+    max-width: 100px;
+  }
+
+  .workspace-dropdown {
+    min-width: 180px;
+  }
+
   .topbar-status {
     gap: 6px;
     width: auto;
@@ -313,6 +327,21 @@
 
   .brand-title {
     font-size: 13px;
+  }
+
+  .workspace-trigger {
+    padding: 2px 6px;
+    font-size: 11px;
+    gap: 4px;
+  }
+
+  .workspace-trigger__label {
+    max-width: 80px;
+  }
+
+  .workspace-chevron {
+    width: 10px;
+    height: 10px;
   }
 
   .nav {
