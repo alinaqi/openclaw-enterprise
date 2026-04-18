@@ -111,6 +111,11 @@ describe("password", () => {
       expect(wasRecentlyUsed("NewP@ss456!!", [hash])).toBe(false);
     });
 
+    it("returns false when limit is 0", () => {
+      const hash = hashPassword("OldP@ss123!!");
+      expect(wasRecentlyUsed("OldP@ss123!!", [hash], 0)).toBe(false);
+    });
+
     it("respects the limit parameter", () => {
       const h1 = hashPassword("First1Pass!");
       const h2 = hashPassword("Secon2Pass!");

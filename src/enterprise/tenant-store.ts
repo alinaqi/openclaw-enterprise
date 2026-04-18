@@ -226,6 +226,59 @@ function membershipFromRow(row: MembershipRow): TenantMembership {
   };
 }
 
+// Alias-aware mappers for JOIN results where column names are prefixed
+type UserJoinRow = {
+  uid: string;
+  email: string;
+  uname: string;
+  avatar_url: string | null;
+  ustatus: string;
+  auth_method: string;
+  mfa_enabled: number;
+  ucreated: string;
+  uupdated: string;
+  last_login_at: string | null;
+};
+
+function userFromJoinRow(row: UserJoinRow): User {
+  return {
+    id: row.uid,
+    email: row.email,
+    name: row.uname,
+    avatarUrl: row.avatar_url ?? undefined,
+    status: row.ustatus as User["status"],
+    authMethod: row.auth_method as User["authMethod"],
+    mfaEnabled: row.mfa_enabled === 1,
+    createdAt: row.ucreated,
+    updatedAt: row.uupdated,
+    lastLoginAt: row.last_login_at ?? undefined,
+  };
+}
+
+type TenantJoinRow = {
+  tid2: string;
+  tname: string;
+  slug: string;
+  plan: string;
+  tstatus: string;
+  settings_json: string;
+  tcreated: string;
+  tupdated: string;
+};
+
+function tenantFromJoinRow(row: TenantJoinRow): Tenant {
+  return {
+    id: row.tid2,
+    name: row.tname,
+    slug: row.slug,
+    plan: row.plan as Tenant["plan"],
+    status: row.tstatus as Tenant["status"],
+    settings: JSON.parse(row.settings_json) as TenantSettings,
+    createdAt: row.tcreated,
+    updatedAt: row.tupdated,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Factory
 // ---------------------------------------------------------------------------
@@ -414,14 +467,16 @@ export function createTenantStore(dbPath: string): TenantStore {
     },
 
     listTenantMembers(tenantId) {
-      const rows = stmts.selectMembershipsByTenant.all(tenantId) as (MembershipRow & UserRow)[];
-      return rows.map((row) => Object.assign(membershipFromRow(row), { user: userFromRow(row) }));
+      const rows = stmts.selectMembershipsByTenant.all(tenantId) as (MembershipRow & UserJoinRow)[];
+      return rows.map((row) =>
+        Object.assign(membershipFromRow(row), { user: userFromJoinRow(row) }),
+      );
     },
 
     listUserTenants(userId) {
-      const rows = stmts.selectMembershipsByUser.all(userId) as (MembershipRow & TenantRow)[];
+      const rows = stmts.selectMembershipsByUser.all(userId) as (MembershipRow & TenantJoinRow)[];
       return rows.map((row) =>
-        Object.assign(membershipFromRow(row), { tenant: tenantFromRow(row) }),
+        Object.assign(membershipFromRow(row), { tenant: tenantFromJoinRow(row) }),
       );
     },
 

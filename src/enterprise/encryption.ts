@@ -108,6 +108,12 @@ export function decrypt(key: Buffer, envelope: EncryptionEnvelope): Buffer {
   const iv = Buffer.from(envelope.iv, "base64");
   const tag = Buffer.from(envelope.tag, "base64");
   const ciphertext = Buffer.from(envelope.ct, "base64");
+  if (iv.length !== IV_LENGTH) {
+    throw new Error(`Invalid IV length: expected ${IV_LENGTH}, got ${iv.length}`);
+  }
+  if (tag.length !== TAG_LENGTH) {
+    throw new Error(`Invalid auth tag length: expected ${TAG_LENGTH}, got ${tag.length}`);
+  }
   const decipher = createDecipheriv(ALGORITHM, key, iv, { authTagLength: TAG_LENGTH });
   decipher.setAuthTag(tag);
   return Buffer.concat([decipher.update(ciphertext), decipher.final()]);

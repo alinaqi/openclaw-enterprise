@@ -11,7 +11,7 @@
  *   - scopes: permission scopes
  */
 
-import { createHmac, randomUUID } from "node:crypto";
+import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import type { JwtPayload, TenantId, TenantRole, UserId } from "../types.js";
 
 // ---------------------------------------------------------------------------
@@ -166,9 +166,11 @@ export function verifyToken(config: JwtConfig, token: string): JwtVerifyResult {
     return { valid: false, error: "Invalid token format" };
   }
 
-  // Verify signature
+  // Verify signature (constant-time comparison to prevent timing attacks)
   const expectedSignature = sign(payload, header, config.secret);
-  if (signature !== expectedSignature) {
+  const sigBuffer = Buffer.from(signature);
+  const expectedBuffer = Buffer.from(expectedSignature);
+  if (sigBuffer.length !== expectedBuffer.length || !timingSafeEqual(sigBuffer, expectedBuffer)) {
     return { valid: false, error: "Invalid signature" };
   }
 
@@ -180,9 +182,12 @@ export function verifyToken(config: JwtConfig, token: string): JwtVerifyResult {
     return { valid: false, error: "Invalid payload encoding" };
   }
 
-  // Check expiry
+  // Check expiry (exp claim is required)
   const now = Math.floor(Date.now() / 1000);
-  if (decoded.exp && decoded.exp < now) {
+  if (typeof decoded.exp !== "number") {
+    return { valid: false, error: "Missing exp claim" };
+  }
+  if (decoded.exp < now) {
     return { valid: false, error: "Token expired" };
   }
 

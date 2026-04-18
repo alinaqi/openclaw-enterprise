@@ -194,8 +194,9 @@ describe("rbac", () => {
       expect(canAccessTool("member", "gmail")).toBe(true);
     });
 
-    it("unknown tools default to member+ access", () => {
-      expect(canAccessTool("member", "unknown_tool")).toBe(true);
+    it("unknown tools are denied by default (fail-closed)", () => {
+      expect(canAccessTool("owner", "unknown_tool")).toBe(false);
+      expect(canAccessTool("member", "unknown_tool")).toBe(false);
       expect(canAccessTool("guest", "unknown_tool")).toBe(false);
     });
 

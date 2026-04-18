@@ -142,8 +142,8 @@ export function canAccessTool(
 ): boolean {
   const policy = policies.find((p) => p.tool === toolName);
   if (!policy) {
-    // Tools without explicit policy: allow member+ by default
-    return isRoleAtLeast(role, "member");
+    // Tools without explicit policy: deny by default (fail-closed)
+    return false;
   }
   return policy.allowedRoles.includes(role);
 }

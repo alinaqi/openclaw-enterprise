@@ -92,12 +92,17 @@ export function verifyPassword(password: string, storedHash: string): boolean {
   const N = parseInt(paramMap["N"] ?? "0", 10);
   const r = parseInt(paramMap["r"] ?? "0", 10);
   const p = parseInt(paramMap["p"] ?? "0", 10);
-  if (!N || !r || !p) {
+  // Bound scrypt parameters to prevent DoS via crafted hashes
+  if (!N || !r || !p || N > 1048576 || r > 16 || p > 16) {
     return false;
   }
 
   const salt = Buffer.from(saltB64, "base64");
   const expectedHash = Buffer.from(hashB64, "base64");
+  // Validate expected hash length to prevent DoS
+  if (expectedHash.length !== HASH_LENGTH) {
+    return false;
+  }
   const actualHash = scryptSync(password, salt, expectedHash.length, { N, r, p });
 
   return timingSafeEqual(actualHash, expectedHash);
@@ -143,6 +148,9 @@ export function wasRecentlyUsed(
   previousHashes: string[],
   limit: number = DEFAULT_PASSWORD_POLICY.preventReuse,
 ): boolean {
+  if (limit <= 0) {
+    return false;
+  }
   const recent = previousHashes.slice(-limit);
   return recent.some((hash) => verifyPassword(password, hash));
 }
