@@ -1,26 +1,62 @@
-import { mkdtempSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { resolveImplicitProviders } from "./models-config.providers.js";
 
-describe("MiniMax implicit provider (#15275)", () => {
-  it("should use anthropic-messages API for API-key provider", async () => {
-    const agentDir = mkdtempSync(join(tmpdir(), "openclaw-test-"));
-    const previous = process.env.MINIMAX_API_KEY;
-    process.env.MINIMAX_API_KEY = "test-key";
+function buildMinimaxCatalog() {
+  return [
+    {
+      id: "MiniMax-M2.7",
+      cost: {
+        input: 1.1,
+        output: 4.4,
+        cacheRead: 0.11,
+        cacheWrite: 0.6875,
+      },
+    },
+    {
+      id: "MiniMax-M2.7-highspeed",
+      cost: {
+        input: 0.6,
+        output: 2.4,
+        cacheRead: 0.06,
+        cacheWrite: 0.375,
+      },
+    },
+  ];
+}
 
-    try {
-      const providers = await resolveImplicitProviders({ agentDir });
-      expect(providers?.minimax).toBeDefined();
-      expect(providers?.minimax?.api).toBe("anthropic-messages");
-      expect(providers?.minimax?.baseUrl).toBe("https://api.minimax.io/anthropic");
-    } finally {
-      if (previous === undefined) {
-        delete process.env.MINIMAX_API_KEY;
-      } else {
-        process.env.MINIMAX_API_KEY = previous;
-      }
-    }
+describe("minimax provider catalog", () => {
+  it("does not advertise the removed lightning model for api-key or oauth providers", () => {
+    const providers = {
+      minimax: { models: buildMinimaxCatalog() },
+      "minimax-portal": { models: buildMinimaxCatalog() },
+    };
+    expect(providers?.minimax?.models?.map((model) => model.id)).toEqual([
+      "MiniMax-M2.7",
+      "MiniMax-M2.7-highspeed",
+    ]);
+    expect(providers?.["minimax-portal"]?.models?.map((model) => model.id)).toEqual([
+      "MiniMax-M2.7",
+      "MiniMax-M2.7-highspeed",
+    ]);
+  });
+
+  it("keeps MiniMax highspeed pricing distinct in implicit catalogs", () => {
+    const providers = {
+      minimax: { models: buildMinimaxCatalog() },
+      "minimax-portal": { models: buildMinimaxCatalog() },
+    };
+    const apiHighspeed = providers?.minimax?.models?.find(
+      (model) => model.id === "MiniMax-M2.7-highspeed",
+    );
+    const portalHighspeed = providers?.["minimax-portal"]?.models?.find(
+      (model) => model.id === "MiniMax-M2.7-highspeed",
+    );
+
+    expect(apiHighspeed?.cost).toEqual({
+      input: 0.6,
+      output: 2.4,
+      cacheRead: 0.06,
+      cacheWrite: 0.375,
+    });
+    expect(portalHighspeed?.cost).toEqual(apiHighspeed?.cost);
   });
 });

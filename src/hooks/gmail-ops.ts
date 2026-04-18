@@ -23,6 +23,7 @@ import {
 } from "./gmail-setup-utils.js";
 import {
   buildDefaultHookUrl,
+  buildGogWatchServeLogArgs,
   buildGogWatchServeArgs,
   buildGogWatchStartArgs,
   buildTopicPath,
@@ -44,9 +45,7 @@ import {
   resolveGmailHookRuntimeConfig,
 } from "./gmail.js";
 
-export type GmailSetupOptions = {
-  account: string;
-  project?: string;
+type GmailCommonOptions = {
   topic?: string;
   subscription?: string;
   label?: string;
@@ -62,27 +61,17 @@ export type GmailSetupOptions = {
   tailscale?: "off" | "serve" | "funnel";
   tailscalePath?: string;
   tailscaleTarget?: string;
+};
+
+export type GmailSetupOptions = GmailCommonOptions & {
+  account: string;
+  project?: string;
   pushEndpoint?: string;
   json?: boolean;
 };
 
-export type GmailRunOptions = {
+export type GmailRunOptions = GmailCommonOptions & {
   account?: string;
-  topic?: string;
-  subscription?: string;
-  label?: string;
-  hookToken?: string;
-  pushToken?: string;
-  hookUrl?: string;
-  bind?: string;
-  port?: number;
-  path?: string;
-  includeBody?: boolean;
-  maxBytes?: number;
-  renewEveryMinutes?: number;
-  tailscale?: "off" | "serve" | "funnel";
-  tailscalePath?: string;
-  tailscaleTarget?: string;
 };
 
 const DEFAULT_GMAIL_TOPIC_IAM_MEMBER = "serviceAccount:gmail-api-push@system.gserviceaccount.com";
@@ -266,7 +255,7 @@ export async function runGmailSetup(opts: GmailSetupOptions) {
   };
 
   if (opts.json) {
-    defaultRuntime.log(JSON.stringify(summary, null, 2));
+    defaultRuntime.writeJson(summary);
     return;
   }
 
@@ -365,7 +354,7 @@ export async function runGmailService(opts: GmailRunOptions) {
 
 function spawnGogServe(cfg: GmailHookRuntimeConfig) {
   const args = buildGogWatchServeArgs(cfg);
-  defaultRuntime.log(`Starting gog ${args.join(" ")}`);
+  defaultRuntime.log(`Starting gog ${buildGogWatchServeLogArgs(cfg).join(" ")}`);
   return spawn("gog", args, { stdio: "inherit" });
 }
 

@@ -1,10 +1,19 @@
 export { CLAUDE_CLI_PROFILE_ID, CODEX_CLI_PROFILE_ID } from "./auth-profiles/constants.js";
+export type {
+  AuthCredentialReasonCode,
+  TokenExpiryState,
+} from "./auth-profiles/credential-state.js";
+export type { AuthProfileEligibilityReasonCode } from "./auth-profiles/order.js";
 export { resolveAuthProfileDisplayLabel } from "./auth-profiles/display.js";
 export { formatAuthDoctorHint } from "./auth-profiles/doctor.js";
 export { resolveApiKeyForProfile } from "./auth-profiles/oauth.js";
-export { resolveAuthProfileOrder } from "./auth-profiles/order.js";
-export { resolveAuthStorePathForDisplay } from "./auth-profiles/paths.js";
+export { resolveAuthProfileEligibility, resolveAuthProfileOrder } from "./auth-profiles/order.js";
 export {
+  resolveAuthStatePathForDisplay,
+  resolveAuthStorePathForDisplay,
+} from "./auth-profiles/paths.js";
+export {
+  dedupeProfileIds,
   listProfilesForProvider,
   markAuthProfileGood,
   setAuthProfileOrder,
@@ -16,7 +25,12 @@ export {
   suggestOAuthProfileIdForLegacyDefault,
 } from "./auth-profiles/repair.js";
 export {
+  clearRuntimeAuthProfileStoreSnapshots,
   ensureAuthProfileStore,
+  hasAnyAuthProfileStoreSource,
+  loadAuthProfileStoreForSecretsRuntime,
+  loadAuthProfileStoreForRuntime,
+  replaceRuntimeAuthProfileStoreSnapshots,
   loadAuthProfileStore,
   saveAuthProfileStore,
 } from "./auth-profiles/store.js";
@@ -25,6 +39,7 @@ export type {
   AuthProfileCredential,
   AuthProfileFailureReason,
   AuthProfileIdRepairResult,
+  AuthProfileState,
   AuthProfileStore,
   OAuthCredential,
   ProfileUsageStats,
@@ -33,9 +48,12 @@ export type {
 export {
   calculateAuthProfileCooldownMs,
   clearAuthProfileCooldown,
+  clearExpiredCooldowns,
+  getSoonestCooldownExpiry,
   isProfileInCooldown,
   markAuthProfileCooldown,
   markAuthProfileFailure,
   markAuthProfileUsed,
+  resolveProfilesUnavailableReason,
   resolveProfileUnusableUntilForDisplay,
 } from "./auth-profiles/usage.js";

@@ -1,8 +1,8 @@
 import type { ReplyPayload } from "../types.js";
-import type { ApplyInlineDirectivesFastLaneParams } from "./directive-handling.params.js";
-import type { ElevatedLevel, ReasoningLevel, ThinkLevel, VerboseLevel } from "./directives.js";
+import { isDirectiveOnly } from "./directive-handling.directive-only.js";
 import { handleDirectiveOnly } from "./directive-handling.impl.js";
-import { isDirectiveOnly } from "./directive-handling.parse.js";
+import { resolveCurrentDirectiveLevels } from "./directive-handling.levels.js";
+import type { ApplyInlineDirectivesFastLaneParams } from "./directive-handling.params.js";
 
 export async function applyInlineDirectivesFastLane(
   params: ApplyInlineDirectivesFastLaneParams,
@@ -48,19 +48,19 @@ export async function applyInlineDirectivesFastLane(
   }
 
   const agentCfg = params.agentCfg;
-  const resolvedDefaultThinkLevel =
-    (sessionEntry?.thinkingLevel as ThinkLevel | undefined) ??
-    (agentCfg?.thinkingDefault as ThinkLevel | undefined) ??
-    (await modelState.resolveDefaultThinkingLevel());
-  const currentThinkLevel = resolvedDefaultThinkLevel;
-  const currentVerboseLevel =
-    (sessionEntry?.verboseLevel as VerboseLevel | undefined) ??
-    (agentCfg?.verboseDefault as VerboseLevel | undefined);
-  const currentReasoningLevel =
-    (sessionEntry?.reasoningLevel as ReasoningLevel | undefined) ?? "off";
-  const currentElevatedLevel =
-    (sessionEntry?.elevatedLevel as ElevatedLevel | undefined) ??
-    (agentCfg?.elevatedDefault as ElevatedLevel | undefined);
+  const {
+    currentThinkLevel,
+    currentFastMode,
+    currentVerboseLevel,
+    currentReasoningLevel,
+    currentElevatedLevel,
+  } = await resolveCurrentDirectiveLevels({
+    sessionEntry,
+    agentCfg,
+    resolveDefaultThinkingLevel: directives.hasThinkDirective
+      ? () => modelState.resolveDefaultThinkingLevel()
+      : async () => undefined,
+  });
 
   const directiveAck = await handleDirectiveOnly({
     cfg,
@@ -84,9 +84,13 @@ export async function applyInlineDirectivesFastLane(
     initialModelLabel: params.initialModelLabel,
     formatModelSwitchEvent,
     currentThinkLevel,
+    currentFastMode,
     currentVerboseLevel,
     currentReasoningLevel,
     currentElevatedLevel,
+    surface: ctx.Surface,
+    gatewayClientScopes: ctx.GatewayClientScopes,
+    senderIsOwner: params.senderIsOwner,
   });
 
   if (sessionEntry?.providerOverride) {

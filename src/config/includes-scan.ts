@@ -1,6 +1,6 @@
-import JSON5 from "json5";
 import * as fs from "node:fs/promises";
 import path from "node:path";
+import JSON5 from "json5";
 import { INCLUDE_KEY, MAX_INCLUDE_DEPTH } from "./includes.js";
 
 function listDirectIncludes(parsed: unknown): string[] {
@@ -76,7 +76,6 @@ export async function collectIncludePathsRecursive(params: {
         }
       })();
       if (nestedParsed) {
-        // eslint-disable-next-line no-await-in-loop
         await walk(resolved, nestedParsed, depth + 1);
       }
     }

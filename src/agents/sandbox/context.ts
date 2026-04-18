@@ -1,24 +1,31 @@
 import fs from "node:fs/promises";
-import type { OpenClawConfig } from "../../config/config.js";
-import type { SandboxContext, SandboxWorkspaceInfo } from "./types.js";
-import { DEFAULT_BROWSER_EVALUATE_ENABLED } from "../../browser/constants.js";
-import { ensureBrowserControlAuth, resolveBrowserControlAuth } from "../../browser/control-auth.js";
 import { loadConfig } from "../../config/config.js";
+import type { OpenClawConfig } from "../../config/types.openclaw.js";
+import { getRemoteSkillEligibility } from "../../infra/skills-remote.js";
+import {
+  ensureBrowserControlAuth,
+  resolveBrowserControlAuth,
+} from "../../plugin-sdk/browser-control-auth.js";
+import { DEFAULT_BROWSER_EVALUATE_ENABLED } from "../../plugin-sdk/browser-profiles.js";
 import { defaultRuntime } from "../../runtime.js";
 import { resolveUserPath } from "../../utils.js";
+import { canExecRequestNode } from "../exec-defaults.js";
 import { syncSkillsToWorkspace } from "../skills.js";
 import { DEFAULT_AGENT_WORKSPACE_DIR } from "../workspace.js";
+import { requireSandboxBackendFactory } from "./backend.js";
 import { ensureSandboxBrowser } from "./browser.js";
 import { resolveSandboxConfigForAgent } from "./config.js";
-import { ensureSandboxContainer } from "./docker.js";
 import { createSandboxFsBridge } from "./fs-bridge.js";
 import { maybePruneSandboxes } from "./prune.js";
+import { updateRegistry } from "./registry.js";
 import { resolveSandboxRuntimeStatus } from "./runtime-status.js";
 import { resolveSandboxScopeKey, resolveSandboxWorkspaceDir } from "./shared.js";
+import type { SandboxContext, SandboxDockerConfig, SandboxWorkspaceInfo } from "./types.js";
 import { ensureSandboxWorkspace } from "./workspace.js";
 
 async function ensureSandboxWorkspaceLayout(params: {
   cfg: ReturnType<typeof resolveSandboxConfigForAgent>;
+  agentId: string;
   rawSessionKey: string;
   config?: OpenClawConfig;
   workspaceDir?: string;
@@ -51,6 +58,16 @@ async function ensureSandboxWorkspaceLayout(params: {
           sourceWorkspaceDir: agentWorkspaceDir,
           targetWorkspaceDir: sandboxWorkspaceDir,
           config: params.config,
+          agentId: params.agentId,
+          eligibility: {
+            remote: getRemoteSkillEligibility({
+              advertiseExecNode: canExecRequestNode({
+                cfg: params.config,
+                sessionKey: rawSessionKey,
+                agentId: params.agentId,
+              }),
+            }),
+          },
         });
       } catch (error) {
         const message = error instanceof Error ? error.message : JSON.stringify(error);
@@ -64,11 +81,30 @@ async function ensureSandboxWorkspaceLayout(params: {
   return { agentWorkspaceDir, scopeKey, sandboxWorkspaceDir, workspaceDir };
 }
 
-export async function resolveSandboxContext(params: {
-  config?: OpenClawConfig;
-  sessionKey?: string;
-  workspaceDir?: string;
-}): Promise<SandboxContext | null> {
+export async function resolveSandboxDockerUser(params: {
+  docker: SandboxDockerConfig;
+  workspaceDir: string;
+  stat?: (workspaceDir: string) => Promise<{ uid: number; gid: number }>;
+}): Promise<SandboxDockerConfig> {
+  const configuredUser = params.docker.user?.trim();
+  if (configuredUser) {
+    return params.docker;
+  }
+  const stat = params.stat ?? ((workspaceDir: string) => fs.stat(workspaceDir));
+  try {
+    const workspaceStat = await stat(params.workspaceDir);
+    const uid = Number.isInteger(workspaceStat.uid) ? workspaceStat.uid : null;
+    const gid = Number.isInteger(workspaceStat.gid) ? workspaceStat.gid : null;
+    if (uid === null || gid === null || uid < 0 || gid < 0) {
+      return params.docker;
+    }
+    return { ...params.docker, user: `${uid}:${gid}` };
+  } catch {
+    return params.docker;
+  }
+}
+
+function resolveSandboxSession(params: { config?: OpenClawConfig; sessionKey?: string }) {
   const rawSessionKey = params.sessionKey?.trim();
   if (!rawSessionKey) {
     return null;
@@ -83,21 +119,53 @@ export async function resolveSandboxContext(params: {
   }
 
   const cfg = resolveSandboxConfigForAgent(params.config, runtime.agentId);
+  return { rawSessionKey, runtime, cfg };
+}
+
+export async function resolveSandboxContext(params: {
+  config?: OpenClawConfig;
+  sessionKey?: string;
+  workspaceDir?: string;
+}): Promise<SandboxContext | null> {
+  const resolved = resolveSandboxSession(params);
+  if (!resolved) {
+    return null;
+  }
+  const { rawSessionKey, cfg, runtime } = resolved;
 
   await maybePruneSandboxes(cfg);
 
   const { agentWorkspaceDir, scopeKey, workspaceDir } = await ensureSandboxWorkspaceLayout({
     cfg,
+    agentId: runtime.agentId,
     rawSessionKey,
     config: params.config,
     workspaceDir: params.workspaceDir,
   });
 
-  const containerName = await ensureSandboxContainer({
+  const docker = await resolveSandboxDockerUser({
+    docker: cfg.docker,
+    workspaceDir,
+  });
+  const resolvedCfg = docker === cfg.docker ? cfg : { ...cfg, docker };
+
+  const backendFactory = requireSandboxBackendFactory(resolvedCfg.backend);
+  const backend = await backendFactory({
     sessionKey: rawSessionKey,
+    scopeKey,
     workspaceDir,
     agentWorkspaceDir,
-    cfg,
+    cfg: resolvedCfg,
+  });
+  await updateRegistry({
+    containerName: backend.runtimeId,
+    backendId: backend.id,
+    runtimeLabel: backend.runtimeLabel,
+    sessionKey: scopeKey,
+    createdAtMs: Date.now(),
+    lastUsedAtMs: Date.now(),
+    image: backend.configLabel ?? resolvedCfg.docker.image,
+    configLabelKind: backend.configLabelKind ?? "Image",
   });
 
   const evaluateEnabled =
@@ -119,30 +187,44 @@ export async function resolveSandboxContext(params: {
         return browserAuth;
       })()
     : undefined;
-  const browser = await ensureSandboxBrowser({
-    scopeKey,
-    workspaceDir,
-    agentWorkspaceDir,
-    cfg,
-    evaluateEnabled,
-    bridgeAuth,
-  });
+  if (resolvedCfg.browser.enabled && backend.capabilities?.browser !== true) {
+    throw new Error(
+      `Sandbox backend "${resolvedCfg.backend}" does not support browser sandboxes yet.`,
+    );
+  }
+  const browser =
+    resolvedCfg.browser.enabled && backend.capabilities?.browser === true
+      ? await ensureSandboxBrowser({
+          scopeKey,
+          workspaceDir,
+          agentWorkspaceDir,
+          cfg: resolvedCfg,
+          evaluateEnabled,
+          bridgeAuth,
+        })
+      : null;
 
   const sandboxContext: SandboxContext = {
     enabled: true,
+    backendId: backend.id,
     sessionKey: rawSessionKey,
     workspaceDir,
     agentWorkspaceDir,
-    workspaceAccess: cfg.workspaceAccess,
-    containerName,
-    containerWorkdir: cfg.docker.workdir,
-    docker: cfg.docker,
-    tools: cfg.tools,
-    browserAllowHostControl: cfg.browser.allowHostControl,
+    workspaceAccess: resolvedCfg.workspaceAccess,
+    runtimeId: backend.runtimeId,
+    runtimeLabel: backend.runtimeLabel,
+    containerName: backend.runtimeId,
+    containerWorkdir: backend.workdir,
+    docker: resolvedCfg.docker,
+    tools: resolvedCfg.tools,
+    browserAllowHostControl: resolvedCfg.browser.allowHostControl,
     browser: browser ?? undefined,
+    backend,
   };
 
-  sandboxContext.fsBridge = createSandboxFsBridge({ sandbox: sandboxContext });
+  sandboxContext.fsBridge =
+    backend.createFsBridge?.({ sandbox: sandboxContext }) ??
+    createSandboxFsBridge({ sandbox: sandboxContext });
 
   return sandboxContext;
 }
@@ -152,23 +234,15 @@ export async function ensureSandboxWorkspaceForSession(params: {
   sessionKey?: string;
   workspaceDir?: string;
 }): Promise<SandboxWorkspaceInfo | null> {
-  const rawSessionKey = params.sessionKey?.trim();
-  if (!rawSessionKey) {
+  const resolved = resolveSandboxSession(params);
+  if (!resolved) {
     return null;
   }
-
-  const runtime = resolveSandboxRuntimeStatus({
-    cfg: params.config,
-    sessionKey: rawSessionKey,
-  });
-  if (!runtime.sandboxed) {
-    return null;
-  }
-
-  const cfg = resolveSandboxConfigForAgent(params.config, runtime.agentId);
+  const { rawSessionKey, cfg, runtime } = resolved;
 
   const { workspaceDir } = await ensureSandboxWorkspaceLayout({
     cfg,
+    agentId: runtime.agentId,
     rawSessionKey,
     config: params.config,
     workspaceDir: params.workspaceDir,
