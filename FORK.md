@@ -3,7 +3,7 @@
 This is the enterprise fork of [OpenClaw](https://github.com/openclaw/openclaw).
 
 **Upstream:** `origin` = `openclaw/openclaw` (read-only, fetch/merge only)
-**Fork:** `fork` = `alinaqi/openclaw` (push target)
+**Fork:** `fork` = `alinaqi/openclaw-enterprise` (push target)
 
 **Branch Strategy:**
 ```
