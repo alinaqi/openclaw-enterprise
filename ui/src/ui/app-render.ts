@@ -701,14 +701,7 @@ export function renderApp(state: AppViewState) {
       lookup,
       fromLine: 1,
       lineCount: 5000,
-    })) as {
-      title?: unknown;
-      path?: unknown;
-      content?: unknown;
-      updatedAt?: unknown;
-      totalLines?: unknown;
-      truncated?: unknown;
-    } | null;
+    }));
     const title =
       typeof payload?.title === "string" && payload.title.trim() ? payload.title.trim() : lookup;
     const path =
@@ -1277,11 +1270,11 @@ export function renderApp(state: AppViewState) {
                       <img
                         class="sidebar-brand__logo"
                         src="${agentLogoUrl(basePath)}"
-                        alt="OpenClaw"
+                        alt="OpenClaw Enterprise"
                       />
                       <span class="sidebar-brand__copy">
                         <span class="sidebar-brand__eyebrow">${t("nav.control")}</span>
-                        <span class="sidebar-brand__title">OpenClaw</span>
+                        <span class="sidebar-brand__title">OpenClaw Enterprise</span>
                       </span>
                     `}
               </div>
