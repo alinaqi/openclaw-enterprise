@@ -93,11 +93,14 @@ export function verifyPassword(password: string, storedHash: string): boolean {
   const r = parseInt(paramMap["r"] ?? "0", 10);
   const p = parseInt(paramMap["p"] ?? "0", 10);
   // Bound scrypt parameters to prevent DoS via crafted hashes
-  if (!N || !r || !p || N > 1048576 || r > 16 || p > 16) {
+  if (!N || !r || !p || N > 131072 || r > 16 || p > 16) {
     return false;
   }
 
   const salt = Buffer.from(saltB64, "base64");
+  if (salt.length !== SALT_LENGTH) {
+    return false;
+  }
   const expectedHash = Buffer.from(hashB64, "base64");
   // Validate expected hash length to prevent DoS
   if (expectedHash.length !== HASH_LENGTH) {

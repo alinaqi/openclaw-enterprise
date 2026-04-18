@@ -142,6 +142,7 @@ export type JwtPayload = {
   tid: TenantId;
   role: TenantRole;
   scopes: string[];
+  iss?: string;
   iat: number;
   exp: number;
   jti: string;

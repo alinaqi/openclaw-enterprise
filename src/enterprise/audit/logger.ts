@@ -102,6 +102,14 @@ type AuditRow = {
   user_agent: string | null;
 };
 
+function safeParseJson(json: string): Record<string, unknown> | undefined {
+  try {
+    return JSON.parse(json) as Record<string, unknown>;
+  } catch {
+    return undefined;
+  }
+}
+
 function eventFromRow(row: AuditRow): AuditEvent {
   return {
     id: row.id,
@@ -112,9 +120,7 @@ function eventFromRow(row: AuditRow): AuditEvent {
     resource: row.resource,
     resourceId: row.resource_id ?? undefined,
     outcome: row.outcome as AuditOutcome,
-    metadata: row.metadata_json
-      ? (JSON.parse(row.metadata_json) as Record<string, unknown>)
-      : undefined,
+    metadata: row.metadata_json ? safeParseJson(row.metadata_json) : undefined,
     ip: row.ip ?? undefined,
     userAgent: row.user_agent ?? undefined,
   };
@@ -169,6 +175,9 @@ export function createAuditLogger(dbPath: string): AuditLogger {
     },
 
     query(tenantId, filters, offset, limit) {
+      if (offset < 0 || limit < 0) {
+        throw new RangeError("offset and limit must be non-negative");
+      }
       const conditions = ["tenant_id = ?"];
       const params: unknown[] = [tenantId];
 

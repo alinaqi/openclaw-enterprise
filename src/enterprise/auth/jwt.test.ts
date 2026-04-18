@@ -52,6 +52,17 @@ describe("jwt", () => {
       const payload = decodeTokenUnsafe(token);
       expect(payload!.scopes).toEqual([]);
     });
+
+    it("includes issuer claim", () => {
+      const token = createAccessToken(config, userId, tenantId, role);
+      const payload = decodeTokenUnsafe(token);
+      expect(payload!.iss).toBe("test-issuer");
+    });
+
+    it("throws on short secret", () => {
+      const badConfig: JwtConfig = { secret: "short" };
+      expect(() => createAccessToken(badConfig, userId, tenantId, role)).toThrow(/at least 32/);
+    });
   });
 
   // ---------- createTokenPair ----------

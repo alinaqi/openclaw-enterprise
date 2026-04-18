@@ -9,6 +9,7 @@
  *   - tid: tenantId
  *   - role: tenant role
  *   - scopes: permission scopes
+ *   - iss: issuer
  */
 
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
@@ -19,7 +20,7 @@ import type { JwtPayload, TenantId, TenantRole, UserId } from "../types.js";
 // ---------------------------------------------------------------------------
 
 export type JwtConfig = {
-  /** HMAC secret for signing (min 32 bytes recommended). */
+  /** HMAC secret for signing (min 32 bytes required). */
   secret: string;
   /** Access token TTL in seconds. @default 900 (15 min) */
   accessTtlSeconds?: number;
@@ -45,7 +46,8 @@ export type JwtVerifyResult =
 
 const DEFAULT_ACCESS_TTL = 900; // 15 minutes
 const DEFAULT_REFRESH_TTL = 604800; // 7 days
-const _DEFAULT_ISSUER = "openclaw-enterprise";
+const DEFAULT_ISSUER = "openclaw-enterprise";
+const MIN_SECRET_LENGTH = 32;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -69,6 +71,14 @@ function sign(payload: string, header: string, secret: string): string {
   return createHmac("sha256", secret).update(input).digest("base64url");
 }
 
+function validateSecret(secret: string): void {
+  if (secret.length < MIN_SECRET_LENGTH) {
+    throw new Error(
+      `JWT secret must be at least ${MIN_SECRET_LENGTH} characters, got ${secret.length}`,
+    );
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Token creation
 // ---------------------------------------------------------------------------
@@ -83,8 +93,10 @@ export function createAccessToken(
   role: TenantRole,
   scopes: string[] = [],
 ): string {
+  validateSecret(config.secret);
   const now = Math.floor(Date.now() / 1000);
   const ttl = config.accessTtlSeconds ?? DEFAULT_ACCESS_TTL;
+  const issuer = config.issuer ?? DEFAULT_ISSUER;
 
   const header = base64UrlEncode(JSON.stringify({ alg: "HS256", typ: "JWT" }));
 
@@ -93,6 +105,7 @@ export function createAccessToken(
     tid: tenantId,
     role,
     scopes,
+    iss: issuer,
     iat: now,
     exp: now + ttl,
     jti: randomUUID(),
@@ -114,8 +127,10 @@ export function createTokenPair(
   role: TenantRole,
   scopes: string[] = [],
 ): TokenPair {
+  validateSecret(config.secret);
   const accessTtl = config.accessTtlSeconds ?? DEFAULT_ACCESS_TTL;
   const refreshTtl = config.refreshTtlSeconds ?? DEFAULT_REFRESH_TTL;
+  const issuer = config.issuer ?? DEFAULT_ISSUER;
 
   const accessToken = createAccessToken(config, userId, tenantId, role, scopes);
 
@@ -127,6 +142,7 @@ export function createTokenPair(
       tid: tenantId,
       role,
       scopes: ["refresh"],
+      iss: issuer,
       iat: now,
       exp: now + refreshTtl,
       jti: randomUUID(),
@@ -151,9 +167,10 @@ export function createTokenPair(
  *
  * Checks:
  * 1. Format (3 dot-separated parts)
- * 2. Signature (HMAC-SHA256)
+ * 2. Signature (HMAC-SHA256, constant-time)
  * 3. Expiry (exp claim)
- * 4. Required fields (sub, tid, role)
+ * 4. Issuer (iss claim, if configured)
+ * 5. Required fields (sub, tid, role)
  */
 export function verifyToken(config: JwtConfig, token: string): JwtVerifyResult {
   const parts = token.split(".");
@@ -189,6 +206,12 @@ export function verifyToken(config: JwtConfig, token: string): JwtVerifyResult {
   }
   if (decoded.exp < now) {
     return { valid: false, error: "Token expired" };
+  }
+
+  // Validate issuer if configured
+  const expectedIssuer = config.issuer ?? DEFAULT_ISSUER;
+  if (decoded.iss && decoded.iss !== expectedIssuer) {
+    return { valid: false, error: "Invalid issuer" };
   }
 
   // Validate required fields
