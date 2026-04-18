@@ -1,4 +1,4 @@
-# 🦞 OpenClaw Enterprise — Multi-Org AI Chief of Staff
+# 🦞 OpenClaw Enterprise
 
 <p align="center">
     <picture>
@@ -8,44 +8,61 @@
 </p>
 
 <p align="center">
-  <strong>Enterprise-ready AI assistant for multi-org management</strong>
+  <strong>Making OpenClaw enterprise-ready</strong>
 </p>
 
 <p align="center">
-  <a href="https://github.com/openclaw/openclaw/actions/workflows/ci.yml?branch=main"><img src="https://img.shields.io/github/actions/workflow/status/openclaw/openclaw/ci.yml?branch=main&style=for-the-badge" alt="CI status"></a>
-  <a href="https://github.com/openclaw/openclaw/releases"><img src="https://img.shields.io/github/v/release/openclaw/openclaw?include_prereleases&style=for-the-badge" alt="GitHub release"></a>
-  <a href="https://discord.gg/clawd"><img src="https://img.shields.io/discord/1456350064065904867?label=Discord&logo=discord&logoColor=white&color=5865F2&style=for-the-badge" alt="Discord"></a>
+  <a href="https://github.com/alinaqi/openclaw-enterprise"><img src="https://img.shields.io/badge/Fork-openclaw--enterprise-orange?style=for-the-badge" alt="Fork"></a>
+  <a href="https://github.com/openclaw/openclaw"><img src="https://img.shields.io/badge/Upstream-openclaw-blue?style=for-the-badge" alt="Upstream"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge" alt="MIT License"></a>
 </p>
 
-**OpenClaw Enterprise** is a fork of [OpenClaw](https://github.com/openclaw/openclaw) being made enterprise-ready for multi-organization management. Built on top of OpenClaw's personal AI assistant platform, this fork adds workspace isolation, per-org tool configuration, and a Stripe-style workspace switcher — turning a single-user assistant into a multi-org AI chief of staff ("Leo").
+---
 
-Leo aggregates work context across multiple organizations into a single conversational interface. He reads emails, checks calendars, summarizes engineering activity, tracks projects, and acts on your behalf — all scoped to the right workspace.
+## Vision
 
-### Enterprise features (this fork)
+[OpenClaw](https://github.com/openclaw/openclaw) is a brilliant personal AI assistant — but it's built for a single user on a single device. Enterprises need more: multi-org isolation, per-team tooling, workspace-scoped sessions, and centralized governance.
 
-- **Workspace switcher** — Stripe-style org selector in the topbar with per-workspace chat session isolation
+**OpenClaw Enterprise** bridges that gap. Our goal is to take everything that makes OpenClaw great — the multi-channel gateway, the extensible tool system, the local-first philosophy — and make it work for teams and organizations. One assistant that understands your org boundaries, respects data isolation, and integrates with the tools each team actually uses.
+
+We stay in sync with upstream OpenClaw and contribute back where possible. This isn't a divergent fork — it's an enterprise layer on top of a strong foundation.
+
+---
+
+## What's Changed (vs upstream OpenClaw)
+
+### Workspace Management
+- **Workspace switcher** — Stripe-style org selector in the topbar; switch between organizations instantly
+- **Workspace-scoped sessions** — Chat history is isolated per organization, no cross-org message bleed
+- **Workspace settings** — Per-workspace configuration with its own credentials and tool preferences
+
+### Multi-Org Tool Integration
 - **Dynamic PM tool config** — Choose your project management tool per workspace (GitHub Issues, Asana, Monday.com, Jira, Linear) with per-tool credential management
-- **Workspace-scoped sessions** — Chat history stays separate per organization, no cross-org message bleed
-- **Multi-account tool support** — Gmail, Calendar, Slack, GitHub all support per-org account switching
+- **Multi-account Gmail** — Read, search, and draft emails across multiple Google Workspace accounts
+- **Multi-account Calendar** — View and manage events across org calendars with conflict detection
+- **Multi-workspace Slack** — Read channels, threads, and search across multiple Slack workspaces
+- **GitHub Actions** — PR reviews, issue triage, and repo activity across multiple GitHub orgs
+- **Asana integration** — Task management, project tracking, and team workload visibility
+- **Monday.com integration** — Board management, item tracking, and status updates
+
+### AI Chief of Staff ("Leo")
+- **People index** — Semantic search across your org directory with cross-platform identity resolution (Slack + GitHub + email)
+- **Automated briefings** — Daily/weekly summaries of email, calendar, engineering activity, and project status
+- **Cross-org context** — Ask Leo about anyone or anything across all your organizations in one conversation
+
+### Infrastructure
 - **WebSocket reconnect resilience** — Auto-recovery of chat state on connection drops
+- **Scoped session persistence** — Sessions tracked per gateway URL, no collisions across environments
 
-### Base platform
+---
 
-OpenClaw is a _personal AI assistant_ you run on your own devices.
-It answers you on the channels you already use. It can speak and listen on macOS/iOS/Android, and can render a live Canvas you control. The Gateway is just the control plane — the product is the assistant.
+## Base Platform
 
-If you want a personal, single-user assistant that feels local, fast, and always-on, this is it.
+This fork is built on [OpenClaw](https://github.com/openclaw/openclaw) — a personal AI assistant you run on your own devices. It answers you on the channels you already use, can speak and listen on macOS/iOS/Android, and renders a live Canvas you control.
 
-Supported channels include: WhatsApp, Telegram, Slack, Discord, Google Chat, Signal, iMessage, BlueBubbles, IRC, Microsoft Teams, Matrix, Feishu, LINE, Mattermost, Nextcloud Talk, Nostr, Synology Chat, Tlon, Twitch, Zalo, Zalo Personal, WeChat, QQ, WebChat.
+Supported channels: WhatsApp, Telegram, Slack, Discord, Google Chat, Signal, iMessage, IRC, Microsoft Teams, Matrix, Feishu, LINE, Mattermost, Nextcloud Talk, Nostr, Twitch, Zalo, WeChat, QQ, WebChat, and more.
 
-[Website](https://openclaw.ai) · [Docs](https://docs.openclaw.ai) · [Vision](VISION.md) · [DeepWiki](https://deepwiki.com/openclaw/openclaw) · [Getting Started](https://docs.openclaw.ai/start/getting-started) · [Updating](https://docs.openclaw.ai/install/updating) · [Showcase](https://docs.openclaw.ai/start/showcase) · [FAQ](https://docs.openclaw.ai/help/faq) · [Onboarding](https://docs.openclaw.ai/start/wizard) · [Nix](https://github.com/openclaw/nix-openclaw) · [Docker](https://docs.openclaw.ai/install/docker) · [Discord](https://discord.gg/clawd)
-
-New install? Start here: [Getting started](https://docs.openclaw.ai/start/getting-started)
-
-Preferred setup: run `openclaw onboard` in your terminal.
-OpenClaw Onboard guides you step by step through setting up the gateway, workspace, channels, and skills. It is the recommended CLI setup path and works on **macOS, Linux, and Windows (via WSL2; strongly recommended)**.
-Works with npm, pnpm, or bun.
+[OpenClaw Docs](https://docs.openclaw.ai) · [Getting Started](https://docs.openclaw.ai/start/getting-started) · [OpenClaw Discord](https://discord.gg/clawd)
 
 ## Sponsors
 
