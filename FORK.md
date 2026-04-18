@@ -4,27 +4,41 @@ This is the enterprise fork of [OpenClaw](https://github.com/openclaw/openclaw).
 
 **Upstream:** `origin` = `openclaw/openclaw` (read-only, fetch/merge only)
 **Fork:** `fork` = `alinaqi/openclaw` (push target)
-**Branch:** `leo/all-features` (tracks `fork/leo/all-features`)
+
+**Branch Strategy:**
+```
+main          (stable releases, PRs from develop)
+  └── develop   (active development, PRs from feature/*)
+        ├── feature/09-xxx
+        └── feature/10-xxx
+```
+- `develop` — all feature branches PR into here
+- `main` — stable releases; merge develop via PR when ready
+- `origin/main` — upstream sync target (merge into develop)
 
 ## Sync Procedure
 
 ```bash
-# 1. Tag before sync (rollback safety net)
+# 1. Switch to develop
+git checkout develop
+
+# 2. Tag before sync (rollback safety net)
 git tag pre-sync-$(date +%Y-%m-%d)
 
-# 2. Fetch upstream
+# 3. Fetch upstream
 git fetch origin
 
-# 3. Merge upstream main
+# 4. Merge upstream main into develop
 git merge origin/main
 
-# 4. Resolve conflicts (see conflict-prone files below)
+# 5. Resolve conflicts (see conflict-prone files below)
 
-# 5. Push to fork
-git push
+# 6. Push to fork
+git push fork develop
 ```
 
 **Cadence:** Weekly or biweekly. Don't sync daily — upstream moves fast.
+**Releases:** When develop is stable, create a PR from `develop` → `main`.
 
 ## Modified Upstream Files (Conflict Risk)
 
