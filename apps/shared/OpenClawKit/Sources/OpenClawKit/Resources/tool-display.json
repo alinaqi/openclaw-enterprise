@@ -1105,6 +1105,84 @@
         "text",
         "channel"
       ]
+    },
+    "asana_projects": {
+      "title": "Asana Projects",
+      "detailKeys": [
+        "org",
+        "workspace"
+      ]
+    },
+    "asana_search": {
+      "title": "Asana Search",
+      "detailKeys": [
+        "org",
+        "query"
+      ]
+    },
+    "asana_sprint_status": {
+      "title": "Asana Sprint",
+      "detailKeys": [
+        "org",
+        "project"
+      ]
+    },
+    "asana_task_detail": {
+      "title": "Asana Task",
+      "detailKeys": [
+        "org",
+        "taskId"
+      ]
+    },
+    "asana_tasks": {
+      "title": "Asana Tasks",
+      "detailKeys": [
+        "org",
+        "project",
+        "assignee"
+      ]
+    },
+    "calendar": {
+      "title": "Calendar",
+      "detailKeys": [
+        "org",
+        "action",
+        "date"
+      ]
+    },
+    "people_list": {
+      "title": "People List",
+      "detailKeys": [
+        "org",
+        "team"
+      ]
+    },
+    "people_lookup": {
+      "title": "People Lookup",
+      "detailKeys": [
+        "name",
+        "email"
+      ]
+    },
+    "people_search": {
+      "title": "People Search",
+      "detailKeys": [
+        "query"
+      ]
+    },
+    "people_sync": {
+      "title": "People Sync",
+      "detailKeys": [
+        "org"
+      ]
+    },
+    "slack_read": {
+      "title": "Slack Read",
+      "detailKeys": [
+        "org",
+        "channel",
+        "query"
+      ]
     }
   }
 }
