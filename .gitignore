@@ -95,6 +95,9 @@ USER.md
 # local tooling
 .serena/
 
+# Project specs (local planning, never commit)
+_project_specs/
+
 # Agent credentials and memory (NEVER COMMIT)
 /memory/
 .agent/*.json
